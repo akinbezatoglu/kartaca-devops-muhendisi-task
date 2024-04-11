@@ -1,0 +1,8 @@
+api:
+  domain: 0.0.0.0
+  http_port: 5555
+elasticsearch:
+  cluster_addresses:
+    - http://elasticsearch1:9200
+    - http://elasticsearch2:9200
+    - http://elasticsearch3:9200
