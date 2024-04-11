@@ -1,0 +1,219 @@
+version: '3'
+services:
+  seed_data:
+    image: curlimages/curl:8.7.1
+    container_name: seed_data
+    depends_on:
+      elasticsearch1:
+        condition: service_healthy
+      elasticsearch2:
+        condition: service_healthy
+      elasticsearch3:
+        condition: service_healthy
+    volumes:
+      - ./scripts/init.sh:/usr/local/bin/init.sh:ro
+    command: [ "/bin/sh", "-c", "/usr/local/bin/init.sh" ]
+    networks:
+      - kartaca-staj
+
+  elasticsearch1:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: elasticsearch1
+    environment:
+      - node.name=elasticsearch1
+      - cluster.name=kartaca-staj-elasticsearch-cluster
+      - node.role:[master, data]
+      - discovery.seed_hosts=elasticsearch1,elasticsearch2,elasticsearch3
+      - cluster.initial_master_nodes=elasticsearch1,elasticsearch2,elasticsearch3
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --silent --fail localhost:9200/_cluster/health || exit 1"
+        ]
+      interval: 30s
+      timeout: 30s
+      retries: 10
+    expose:
+      - 9200
+    networks:
+      - kartaca-staj
+
+  elasticsearch2:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: elasticsearch2
+    environment:
+      - node.name=elasticsearch2
+      - cluster.name=kartaca-staj-elasticsearch-cluster
+      - node.role:[master, data]
+      - discovery.seed_hosts=elasticsearch1,elasticsearch2,elasticsearch3
+      - cluster.initial_master_nodes=elasticsearch1,elasticsearch2,elasticsearch3
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --silent --fail localhost:9200/_cluster/health || exit 1"
+        ]
+      interval: 30s
+      timeout: 30s
+      retries: 10
+    expose:
+      - 9200
+    networks:
+      - kartaca-staj
+
+  elasticsearch3:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    container_name: elasticsearch3
+    environment:
+      - node.name=elasticsearch3
+      - cluster.name=kartaca-staj-elasticsearch-cluster
+      - node.role:[master, data]
+      - discovery.seed_hosts=elasticsearch1,elasticsearch2,elasticsearch3
+      - cluster.initial_master_nodes=elasticsearch1,elasticsearch2,elasticsearch3
+      - bootstrap.memory_lock=true
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - xpack.security.enabled=false
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "curl --silent --fail localhost:9200/_cluster/health || exit 1"
+        ]
+      interval: 30s
+      timeout: 30s
+      retries: 10
+    expose:
+      - 9200
+    networks:
+      - kartaca-staj
+
+  golang-app:
+    build: ./web/golang-app
+    container_name: golang-app
+    depends_on:
+      seed_data:
+        condition: service_completed_successfully
+    ports:
+      - 5555:5555
+    networks:
+      - kartaca-staj
+
+  python-app:
+    build: ./web/python-app
+    container_name: python-app
+    depends_on:
+      seed_data:
+        condition: service_completed_successfully
+    ports:
+      - 4444:4444
+    networks:
+      - kartaca-staj
+
+  prometheus:
+    image: prom/prometheus:v2.51.1
+    container_name: prometheus
+    depends_on:
+      seed_data:
+        condition: service_completed_successfully
+    volumes:
+      - ./prometheus:/etc/prometheus:ro
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yaml'
+    restart: unless-stopped
+    expose:
+      - 9090
+    networks:
+      - kartaca-staj
+
+  node_exporter:
+    image: prom/node-exporter:v1.7.0
+    container_name: node_exporter
+    depends_on:
+      - prometheus
+    volumes:
+      - /:/host:ro,rslave
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    restart: unless-stopped
+    expose:
+      - 9100
+    networks:
+      - kartaca-staj
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.49.1
+    container_name: cadvisor
+    depends_on:
+      - prometheus
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:ro
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+      - /dev/disk:/dev/disk:ro
+    restart: unless-stopped
+    expose:
+      - 8080
+    networks:
+      - kartaca-staj
+
+  grafana:
+    image: grafana/grafana:10.1.9
+    container_name: grafana
+    depends_on:
+      - prometheus
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - ./grafana/grafana.ini:/etc/grafana/grafana.ini:ro
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+    restart: unless-stopped
+    expose:
+      - 3000
+    networks:
+      - kartaca-staj
+
+  haproxy:
+    image: haproxy:3.0-dev6-alpine3.19
+    container_name: haproxy
+    depends_on:
+      - golang-app
+      - python-app
+      - grafana
+    ports:
+      - 80:80
+    volumes:
+      - ./haproxy:/usr/local/etc/haproxy:ro
+    restart: unless-stopped
+    networks:
+      - kartaca-staj
+
+networks:
+  kartaca-staj:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.100.16/28
