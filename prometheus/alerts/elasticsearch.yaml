@@ -1,0 +1,53 @@
+groups:
+- name: elasticsearch_cadvisor_alerts
+  rules:
+  - alert: HighCpuUsageElasticsearch1
+    expr: rate(container_cpu_usage_seconds_total{name="elasticsearch1"}[5m]) > 0.9
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage on Elasticsearch1"
+      description: "Elasticsearch1 has had CPU usage over 90% for more than 10 minutes."
+  - alert: HighMemoryUsageElasticsearch1
+    expr: container_memory_usage_bytes{name="elasticsearch1"} > (2 * 1024 * 1024 * 1024) # 2GB
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on Elasticsearch1"
+      description: "Elasticsearch1 has had memory usage over 2GB for more than 5 minutes."
+
+  - alert: HighCpuUsageElasticsearch2
+    expr: rate(container_cpu_usage_seconds_total{name="elasticsearch2"}[5m]) > 0.9
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage on Elasticsearch2"
+      description: "Elasticsearch2 has had CPU usage over 90% for more than 10 minutes."
+  - alert: HighMemoryUsageElasticsearch2
+    expr: container_memory_usage_bytes{name="elasticsearch2"} > (2 * 1024 * 1024 * 1024) # 2GB
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on Elasticsearch2"
+      description: "Elasticsearch2 has had memory usage over 2GB for more than 5 minutes."
+  
+  - alert: HighCpuUsageElasticsearch3
+    expr: rate(container_cpu_usage_seconds_total{name="elasticsearch3"}[5m]) > 0.9
+    for: 10m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High CPU usage on Elasticsearch3"
+      description: "Elasticsearch3 has had CPU usage over 90% for more than 10 minutes."
+  - alert: HighMemoryUsageElasticsearch3
+    expr: container_memory_usage_bytes{name="elasticsearch3"} > (2 * 1024 * 1024 * 1024) # 2GB
+    for: 5m
+    labels:
+      severity: warning
+    annotations:
+      summary: "High memory usage on Elasticsearch3"
+      description: "Elasticsearch3 has had memory usage over 2GB for more than 5 minutes."
