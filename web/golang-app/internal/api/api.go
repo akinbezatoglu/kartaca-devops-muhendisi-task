@@ -38,7 +38,7 @@ func New(router *mux.Router, es *elasticsearch.ES) *API {
 }
 
 func (a *API) helloHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprint(w, "\"Merhaba, Dünya!\"")
+	fmt.Fprint(w, "Merhaba, Go!")
 }
 
 func (a *API) preflightHandler(w http.ResponseWriter, r *http.Request) {
