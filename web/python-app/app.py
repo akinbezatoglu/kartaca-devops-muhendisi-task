@@ -2,8 +2,10 @@ from flask import Flask, jsonify, make_response
 from elasticsearch import Elasticsearch
 import random
 
-class ES:
-    def __init__(self):
+class FlaskAppWrapper(object):
+
+    def __init__(self, app):
+        self.app = app
         self.client = Elasticsearch(
             hosts=[
                 "http://elasticsearch1:9200",
@@ -11,30 +13,32 @@ class ES:
                 "http://elasticsearch3:9200",
             ]
         )
-
+    
     def get_one_random_province(self):
-        idx = "iller"
-        doc_id = str(random.randint(1, 10))
-        resp = self.client.get(index=idx, id=doc_id)
-        if resp["found"]:
-            return resp['_source']
-        else:
-            return False
+        return self.client.get(index="iller", id=str(random.randint(1, 10)))
 
-app = Flask(__name__)
+    def add_endpoint(self, endpoint=None, endpoint_name=None, handler=None, methods=['GET'], *args, **kwargs):
+        self.app.add_url_rule(endpoint, endpoint_name, handler, methods=methods, *args, **kwargs)
 
-@app.route("/")
-def greet():
-    return "Merhaba Python!"
+    def run(self, **kwargs):
+        self.app.run(**kwargs)
 
-@app.route("/staj")
-def province():
-    elastic = ES()
-    c = elastic.get_one_random_province()
-    if c:
-        return jsonify(c)
+
+flask_app = Flask(__name__)
+app = FlaskAppWrapper(flask_app)
+
+def hello():
+    return "Merhaba, Python!"
+
+def staj():
+    resp = app.get_one_random_province()
+    if resp["found"]:
+        return jsonify(resp['_source'])
     else:
-        make_response({"error": "Internal Server Error"}, 500)
+        return make_response({"error": "Internal Server Error"}, 500)
+
+app.add_endpoint('/', 'hello', hello, methods=['GET'])
+app.add_endpoint('/staj', 'staj', staj, methods=['GET'])
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True, port=4444)
